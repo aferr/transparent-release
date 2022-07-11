@@ -91,6 +91,7 @@
         !hasVulnerableDependency("ServerSideMLInferenceApp").
 
     "CryptographyReviewCertificationStandard" canSay ReviewerX canActAs "CryptographyReviewer".
+    "ReviewerSuspensionPolicy" canSay suspendReviewer(ReviewerX).
     ReviewerX canSay adheresToStandard("CryptographyGuidelines:1.52") :-
         ReviewerX canActAs "CryptographyReviewer",
         !suspendReviewer(ReviewerX).
@@ -111,5 +112,7 @@
     "TransparentReleasePolicy" canSay someHashX
         canActAs "ServerSideMLInferenceApp".
     "MLInferenceSourceApprovalPolicy" canSay acceptSource("ServerSideMLInferenceApp").
-    accept(someHashX) :- someHashX canActAs "ServerSideMLInferenceApp",
+    accept(someHashX) :- 
+        someHashX canActAs "ServerSideMLInferenceApp",
+        acceptSource("ServerSideMLInferenceApp").
 }
