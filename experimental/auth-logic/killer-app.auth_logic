@@ -1,0 +1,115 @@
+//=============================================================================
+// Auditors and tools generate attributes of application software
+//=============================================================================
+"BobTheCryptographer" says {
+    "ServerSideMLInferenceApp" adheresToStandard("CryptographyGuidelines:1.52").
+}
+
+//=============================================================================
+// Policy Principals that standardize criteria for collecting specific kinds
+// of claims from tools and humans
+//=============================================================================
+"DifferentialPrivacyToolsStandard" says {
+    "Fuzz:v1.2" canSay anyApp hasDPWithEpsilon(anyEpsilon).
+    "SOLO:v1.2.7" canSay anyApp hasDPWithEpsilon(anyEpsilon).
+}
+
+"CryptographyReviewCertificationStandard" says {
+    // In order to act as a certified Cryptography 
+    // code reviewer ... 
+    ReviewerX canActAs "CryptographyReviewer" :-
+        // … you need formal training in cryptography
+        ReviewerX hasFormalTraining("cryptography"),
+        // … and you must have done over 1000 normal reviews
+        ReviewerX hasPerformedGithubReviews(q), q > 1000,
+        // … and you must have done reviews in some approved programming 
+        // language
+        (ReviewerX hasReviewedInLanguage(someLanguageX), 
+                someLanguageX canActAs "ApprovedLanguage").
+
+    // Criteria and trusted bodies for establishing cryptography training
+    //      … you can go through coursera
+    "Coursera" canSay ReviewerX hasFormalTraining("cryptography").
+    //      … OR an ABET accredited university
+    "ABETAccreditedUniversity" canSay ReviewerX hasFormalTraining("cryptography").
+    "ABETUniversityList" canSay UniversityX canActAs "ABETAccreditedUniversity".
+
+    // List of approved programming languages
+    "C++" canActAs "ApprovedLanguage"
+    "Java" canActAs "ApprovedLanguage"
+    "Rust" canActAs "ApprovedLanguage"
+    
+    // A specific tool that scans github repositories is trusted
+    // to generate facts related to github activity.
+    "GithubCrawlingTool" canSay ReviewerX hasPerformedGithubReviews(numReviews).
+    "GithubCrawlingTool" canSay ReviewerX hasReviewedInLanguage(language).
+}
+
+"ReviewerSuspensionPolicy" says {
+    "GithubCrawlingTool" canSay ReviewerX hasApprovedProject(projectName, date).
+    "UnixEpochTime" canSay currentTimeIs(time).
+    "VulnerabilityDatabase" canSay hasVulnerability(projectX).
+
+    // Reviewers are suspended from reviewing for 30 days if they have
+    // approved an application that has been found vulnerable.
+    suspendReviewer(ReviewerX) :-
+        ReviewerX hasApprovedProject(projectName, approvalTime),
+        hasVulnerability(projectName),
+        currentTimeIs(currentTime),
+        // 2592000000 is 30 days in milliseconds
+        currentTime - approvalTime < 2592000000
+}
+
+//============================================================================
+// Transparent Release Policy
+//============================================================================
+"TransparentReleasePolicy" says {
+    someHash canActAs someApp :- hasAcceptableBuilder(someApp),
+        someApp hasExpectedHash(someHash),
+        someApp hasReleaseTime(releaseTime),
+        currentTimeIs(currentTime),
+        currentTime > releaseTime,
+        currentTime < releaseTime + 2592000000.
+    
+    "Provenance" canSay anyApp hasExpectedHash(someHash).
+    "Provenance" canSay anyApp hasBuilderId(someBuilder).
+    "ApplicationDevelopmentTeam" canSay hasReleaseTime(time).
+    "UnixEpochTime" canSay curentTimeIs(time).
+
+    hasAcceptableBuilder(anyApp) :- anyApp hasBuilderId("https://github.com/Attestations/GitHubHostedActions@v1").
+    hasAcceptableBuilder(anyApp) :- anyApp hasBuilderId("https://cloudbuild.googleapis.com/GoogleHostedWorker@v1").
+}
+
+
+//=============================================================================
+// Application Source Approval Policy
+//=============================================================================
+"MLInferenceSourceApprovalPolicy" says {
+    acceptSource("ServerSideMLInferenceApp") :-
+        "ServerSideMLInferenceApp" adheresToStandard("CryptographyGuidelines:1.52"),
+        "ServerSideMLInferenceApp" hasDPWithEpsilon(0.7),
+        !hasVulnerableDependency("ServerSideMLInferenceApp").
+
+    "CryptographyReviewCertificationStandard" canSay ReviewerX canActAs "CryptographyReviewer".
+    ReviewerX canSay adheresToStandard("CryptographyGuidelines:1.52") :-
+        ReviewerX canActAs "CryptographyReviewer",
+        !suspendReviewer(ReviewerX).
+
+    hasVulnerableDependency(appX) :- 
+        appX dependsOn(appY), 
+        hasVulnerability(appY).
+    hasVulnerableDependency(appX) :-
+        hasVulnerability(appX).
+    "VulnerabilityDatabase" canSay hasVulnerability(anyApp).
+    "DependencyAnalysisTool" canSay appX dependsOn(appY).
+
+    "DifferentialPrivacyToolsStandard" canSay anyApp hasDPWithEpsilon(epsilon).
+}
+
+// Client side policy
+"MobileClientSideAppPolicy" says {
+    "TransparentReleasePolicy" canSay someHashX
+        canActAs "ServerSideMLInferenceApp".
+    "MLInferenceSourceApprovalPolicy" canSay acceptSource("ServerSideMLInferenceApp").
+    accept(someHashX) :- someHashX canActAs "ServerSideMLInferenceApp",
+}
